@@ -1,13 +1,18 @@
 from core import Core
+import json
 
 class Server(Core):
-	''' Server class handling all the functions for server meters '''
-	def __init__(self):
-		pass
+    """ Server class """
+    def __init__(self):
+        self.core = Core()
 
-	def listen(self):
-		''' Listens on port 1337 for incomming application messages '''
-		pass
+    def hello(self):
+        print("test")
 
-	def createGlobalKey(self):
-		pass
+    def create_global_key(self):
+        pass
+
+s = Server()
+
+s.hello()
+s.core.listen()

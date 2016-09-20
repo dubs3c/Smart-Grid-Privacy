@@ -7,7 +7,8 @@ fi
 
 
 echo "============================ BEGIN INSTALLATION ============================"
-apt-get install python-dev libssl-dev libffi-dev -y
+apt-get install python-dev libssl-dev libffi-dev vim -y
+echo 'alias ll="ls -lah"' > ~/.bashrc
 wget https://bootstrap.pypa.io/get-pip.py
 python get-pip.py
 pip install petlib

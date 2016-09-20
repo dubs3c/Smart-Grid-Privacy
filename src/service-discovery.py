@@ -5,14 +5,14 @@ class ServiceDiscovery(Core):
 		self.node_list = {}
 
 	def listen(self):
-		''' Listens on port 1338 for incomming service discovery messages '''
+		""" Listens on port 1338 for incomming service discovery messages """
 		pass
 
 	def broadcast(self):
 		pass
 
-	def setNode(self, node):
+	def set_node(self, node):
 		pass
 
-	def getNodes(self):
+	def get_nodes(self):
 		return self.node_listt

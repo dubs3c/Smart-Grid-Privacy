@@ -44,7 +44,7 @@ def ascii2dec(text):
     dec = []
     for x in range(len(text)):
         dec.append(ord(text[x]))
-    print dec
+    print (dec)
 
 def add(c1, c2):
     """Add two encrypted counters"""
@@ -105,8 +105,8 @@ def test_AHEG():
     # Check addition
     tmp = add(one, one)
     two = randomize(params, pub, test)
-    print two
-    print priv
+    print(two)
+    print(priv)
     assert dec(params, table, priv, two) == 15
 
     # # Check multiplication
