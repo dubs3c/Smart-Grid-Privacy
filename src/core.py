@@ -17,7 +17,7 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
         self.data = self.request.recv(1024).strip()
 
         parsed_json = json.loads(self.data)
-        print(parsed_json['IP'])
+        print(parsed_json['id']+' '+parsed_json['IP'])
 
         # do_some_logic_with_data(self.data)
 
@@ -41,10 +41,11 @@ class Core:
             except SocketServer.socket.error as exc:
                 if exc.args[0] != 48:
                     raise
-                print 'Port', port, 'already in use'
-                port += 1
+                print 'Port', self.port, 'already in use'
+                self.port += 1
             else:
                 break
+
     def send(self, dst, data):
         """ Sends data to specified host
         Args:
