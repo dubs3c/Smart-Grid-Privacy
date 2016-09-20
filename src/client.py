@@ -13,5 +13,6 @@ class Client(Core):
 
 c = Client()
 
-json_string = '{"first_name": "Guido", "last_name":"Rossum"}'
+msg = 'something'
+json_string = '{"id": "2", "IP":"'+c.core.get_ip()+'", "operation": "something","data": "'+msg+'"}'
 c.core.send("localhost", json_string)

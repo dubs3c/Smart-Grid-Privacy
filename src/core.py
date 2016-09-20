@@ -17,7 +17,7 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
         self.data = self.request.recv(1024).strip()
 
         parsed_json = json.loads(self.data)
-        print(parsed_json['first_name'])
+        print(parsed_json['IP'])
 
         # do_some_logic_with_data(self.data)
 
@@ -33,10 +33,18 @@ class Core:
  
     def listen(self):
         """ Creates a listening socket """
-        server = SocketServer.TCPServer((self.host, self.port), MyTCPHandler)
-        print("[*] Server Listening on %s:%d" % (self.host, self.port))
-        server.serve_forever()
-
+        while True:
+            try:
+                server = SocketServer.TCPServer((self.host, self.port), MyTCPHandler)
+                print("[*] Server Listening on %s:%d" % (self.host, self.port))
+                server.serve_forever()
+            except SocketServer.socket.error as exc:
+                if exc.args[0] != 48:
+                    raise
+                print 'Port', port, 'already in use'
+                port += 1
+            else:
+                break
     def send(self, dst, data):
         """ Sends data to specified host
         Args:
@@ -44,6 +52,8 @@ class Core:
             data (str): The data to send
         """
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+
         try:
             sock.connect((dst, self.port))
             sock.sendall(data + "\n")
@@ -56,6 +66,9 @@ class Core:
             data (str): The received data
         """
         pass
+
+    def get_ip(self):
+        return self.host
 
     def generate_keys(self):
         """ Generate private and public keys """

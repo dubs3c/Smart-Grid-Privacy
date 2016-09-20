@@ -1,3 +1,10 @@
 .DS_Store
 .vagrant/
 *.pyc
+get-pip.py
+
+petlib/_petlib.c
+
+petlib/_petlib.o
+
+petlib/_petlib.so
