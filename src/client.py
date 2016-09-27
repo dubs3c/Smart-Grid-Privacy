@@ -1,6 +1,8 @@
 from core import Core
 from petlib.ec import EcGroup
 from random import randint
+import time, threading
+from threading import Timer
 
 class Client(Core):
 	def __init__(self):
@@ -16,7 +18,10 @@ class Client(Core):
 
 	def generate_readings(self):
 		reading = randint(0,9)
-		return reading
+		print(time.ctime(),reading)
+		json_string = '{"id": "2", "IP":"'+c.core.get_ip()+'", "operation": "something","pub":"'+str(pub)+'", "reading": "'+str(reading)+'"}'
+		c.core.send("localhost", json_string)
+		#return reading
 
 	def generate_keys(self, params):
 		""" Generate a private / public key pair """
@@ -31,7 +36,6 @@ c = Client()
 params = c.setup()
 priv, pub = c.generate_keys(params)
 
-c.generate_readings()
-
-json_string = '{"id": "2", "IP":"'+c.core.get_ip()+'", "operation": "something","pub":"'+str(pub)+'"}'
-c.core.send("localhost", json_string)
+while True:
+  c.generate_readings()
+  time.sleep(10)

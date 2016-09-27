@@ -17,7 +17,7 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
         self.data = self.request.recv(1024).strip()
 
         parsed_json = json.loads(self.data)
-        print(parsed_json['id']+' '+parsed_json['IP'])
+        print(parsed_json['id']+' '+parsed_json['IP']+' '+parsed_json['pub']+' '+parsed_json['reading'])
 
         # do_some_logic_with_data(self.data)
 
@@ -28,7 +28,7 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
 class Core:
     """ This class contains core methods used by the application """
     def __init__(self):
-        self.port = 1337
+        self.port = 1339
         self.host = '0.0.0.0'
  
     def listen(self):
