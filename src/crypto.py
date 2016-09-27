@@ -3,8 +3,9 @@
 ## An implementation of an additivelly homomorphic 
 ## ECC El-Gamal scheme, used in Privex.
 
-from petlib.ec import EcGroup
-import pytest
+from petlib.ec import EcGroup, EcPt
+from petlib.bn import Bn
+import pytest, msgpack
 
 class Crypto():
 
@@ -213,3 +214,30 @@ class Crypto():
         # tmp1 = mul(two, 3)
         # four = randomize(params, pub, tmp1)
         # assert dec(params, table, priv, four) == 6
+
+
+    def default(self, obj):
+        # Serialize Bn objects
+        if isinstance(obj, Bn):
+            if obj < 0:
+                neg = b"-"
+                data = (-obj).binary()
+            else:
+                neg = b"+"
+                data = obj.binary()
+            return msgpack.ExtType(0, neg + data)
+
+        # Serialize EcGroup objects
+        elif isinstance(obj, EcGroup):
+            nid = obj.nid()
+            packed_nid = msgpack.packb(nid)
+            return msgpack.ExtType(1, packed_nid)
+
+        # Serialize EcPt objects
+        elif isinstance(obj, EcPt):
+            nid = obj.group.nid()
+            data = obj.export()
+            packed_nid = msgpack.packb((nid, data))
+            return msgpack.ExtType(2, packed_nid)
+
+        raise TypeError("Unknown type: %r" % (obj,))

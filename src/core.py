@@ -3,6 +3,9 @@ import SocketServer
 import json
 import colorlog
 from crypto import Crypto
+from petlib.ec import EcGroup, EcPt
+
+pub_keys = []
 
 class MyTCPHandler(SocketServer.BaseRequestHandler):
     """
@@ -18,8 +21,24 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
         # self.request is the TCP socket connected to the client
         self.data = self.request.recv(1024).strip()
 
+        clients = []
+        
+        crypto = Crypto()
+        params = crypto.setup()
+
         parsed_json = json.loads(self.data)
-        print(parsed_json['id']+' '+parsed_json['IP']+' '+parsed_json['pub']+' '+parsed_json['reading'])
+        if(parsed_json['operation'] == "key"):
+            if parsed_json['id'] not in clients:
+                print(len(clients))
+                #pub_keys.append(EcPt(parsed_json['pub']))
+                clients.append(parsed_json['id'])
+                print(len(clients),len(pub_keys))
+            if len(pub_keys) == 2:
+                print("group key")
+                group_key = crypto.groupKey(params, pub_keys)
+
+        if(parsed_json['operation'] == "readings"):
+            print(parsed_json['id']+' '+parsed_json['IP']+' '+parsed_json['reading']+' '+parsed_json['encrypted'])
 
         # do_some_logic_with_data(self.data)
 
@@ -30,7 +49,7 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
 class Core:
     """ This class contains core methods used by the application """
     def __init__(self):
-        self.port = 1339
+        self.port = 1336
         self.host = '0.0.0.0'
         
         self.logger = colorlog.getLogger()
@@ -46,7 +65,13 @@ class Core:
         logger.error("Error message")
         logger.critical("Critical message")
         '''
- 
+
+    def get_pub_keys(self):
+        return pub_keys
+
+    def add_pub_key(self,key):
+        pub_keys.append(key)
+
     def listen(self):
         """ Creates a listening socket """
         while True:
@@ -86,7 +111,6 @@ class Core:
 
     def get_ip(self):
         return self.host
-
 
     def test_crypto_system(self):
         crypto = Crypto()

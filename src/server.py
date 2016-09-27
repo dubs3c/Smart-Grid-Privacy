@@ -1,22 +1,26 @@
 from core import Core
+from crypto import Crypto
 import json
 
 class Server(Core):
     """ Server class """
     def __init__(self):
         self.core = Core()
-
-    def create_global_key(self, params, pubKeys=[]):
-		""" Generate a group public key from a list of public keys """
-		(G, g, h, o) = params
-		#let pub be equal to the first public key in the list
-		pub = pubKeys[0]
-		#scan through the rest of the list and add public keys
-		for key in pubKeys[1:]:
-			pub = pub+key
+        self.id = 1
+        
+	def get_pub_key(self):
 		return pub
 
 s = Server()
+crypto = Crypto()
+params = crypto.setup()
+priv, pub = crypto.key_gen(params)
 
-#s.core.listen()
-s.core.test_crypto_system()
+s.core.add_pub_key(pub)
+
+s.core.listen()
+
+#if len(s.core.get_pub_keys) == 2:
+#	print("group key")
+#	group_key = crypto.groupKey(params, s.core.get_pub_keys)
+#s.core.test_crypto_system()
