@@ -241,3 +241,27 @@ class Crypto():
             return msgpack.ExtType(2, packed_nid)
 
         raise TypeError("Unknown type: %r" % (obj,))
+
+
+    def ext_hook(self, code, data):
+
+        # Decode Bn types
+        if code == 0:
+            num = Bn.from_binary(data[1:])
+            # Accomodate both Python 2 and Python 3
+            if data[0] == ord("-") or data[0] == "-":
+                return -num
+            return num
+
+        # Decode EcGroup
+        elif code == 1:
+            nid = msgpack.unpackb(data)
+            return EcGroup(nid)
+
+        # Decode EcPt
+        elif code == 2:
+            nid, ptdata = msgpack.unpackb(data)
+            return EcPt.from_binary(ptdata, EcGroup(nid))
+
+        # Other
+        return msgpack.ExtType(code, data)
