@@ -93,17 +93,30 @@ class Core:
         params = crypto.setup()
 
         pub_keys = []
+        priv_keys = []
+        keypairs = []
         for x in xrange(1,5):
             p = crypto.setup()
-            # print("key {}: {}\n").format(x,crypto.key_gen(p))
-            pub_keys.append(crypto.key_gen(p))
-        
+            #print("key {}: {}\n").format(x,crypto.key_gen(p))
+            keypairs.append(crypto.key_gen(p))
+
+        for s in range(len(keypairs)):
+            #print("Pub: {}").format(keypairs[s][0])
+            pub_keys.append(keypairs[s][1])
+            priv_keys.append(keypairs[s][0])
+
         group_key = crypto.groupKey(params, pub_keys)
 
-        #print("Public keys: {}\n").format(pub_keys)
-        print("Group key calculated: {}\n").format(group_key)
+        print("Group key calculated: {}").format(group_key)
+        message = 100
+        print("Message to be encrypted: {}").format(message)
+        ci = crypto.encrypt(params, group_key, message)
+        print("Ciphertext: {}").format(ci)
 
-        ci = crypto.encrypt(params, group_key, 99)
-        print("{}\n").format(ci)
+        t1 = crypto.partialDecrypt(params, priv_keys[0], ci, False)
+        t2 = crypto.partialDecrypt(params, priv_keys[1], t1, False)
+        t3 = crypto.partialDecrypt(params, priv_keys[2], t2, False)
+        t4 = crypto.partialDecrypt(params, priv_keys[3], t3, True)
 
+        print("Plaintext: {}").format(t4)
 

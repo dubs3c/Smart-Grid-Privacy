@@ -9,7 +9,7 @@ import pytest
 class Crypto():
 
     def __init__(self):
-        pass
+        self._logh = None
 
     def setup(self):
         """Generates the Cryptosystem Parameters."""
@@ -36,7 +36,7 @@ class Crypto():
 
     def encrypt(self, params, pub, m):
         """ Encrypt a message under the public key """
-        if not -100 < m < 100:
+        if not -100 < m <= 100:
             raise Exception("Message value to low or high.")
         (G, g, h, o) = params
         
@@ -120,7 +120,7 @@ class Crypto():
             pub = pub+key
         return pub
 
-    def isCiphertext(params, ciphertext):
+    def isCiphertext(self, params, ciphertext):
         """ Check a ciphertext """
         (G, g, h, o) = params
         ret = len(ciphertext) == 2
@@ -132,15 +132,31 @@ class Crypto():
     def partialDecrypt(self, params, priv, ciphertext, final=False):
         """ Given a ciphertext and a private key, perform partial decryption. 
             If final is True, then return the plaintext. """
-        assert isCiphertext(params, ciphertext)
+        assert self.isCiphertext(params, ciphertext)
         (a,b) = ciphertext
         a1 = priv*a
         b1 = b-a1
         if final:
-            return logh(params, b1)
+            return self.logh(params, b1)
         else:
             return a, b1
 
+
+    def logh(self, params, hm):
+        """ Compute a discrete log, for small number only """
+        #global _logh
+        (G, g, h, o) = params
+
+        # Initialize the map of logh
+        if self._logh == None:
+            self._logh = {}
+            for m in range (-1000, 1000):
+                self._logh[(m * h)] = m
+
+        if hm not in self._logh:
+            raise Exception("No decryption found.")
+
+        return self._logh[hm]
 
     def test_AHEG():
         params = params_gen()
