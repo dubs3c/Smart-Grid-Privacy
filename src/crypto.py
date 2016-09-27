@@ -66,11 +66,30 @@ class Crypto():
         b = k * pub + counter * g
         return (a, b, k)
 
-    def add(self, c1, c2):
-        """Add two encrypted counters"""
-        a1, b1 = c1
-        a2, b2 = c2
-        return (a1 + a2, b1 + b2)
+    def add(self, params, pub, c1, c2):
+        """ Given two ciphertexts compute the ciphertext of the 
+            sum of their plaintexts.
+        """
+        assert self.isCiphertext(params, c1)
+        assert self.isCiphertext(params, c2)
+       
+        #zero element encrypted
+        new_enc = self.encrypt(params, pub, 0)
+        #check whether this new element is in fact 
+        assert self.isCiphertext(params, new_enc)
+        
+        #assign variables to input ciphers
+        (a0,b0)=c1
+        (a1,b1)=c2
+        #new generated 0 element cipher used for verification
+        (a2,b2)=new_enc
+        #compute initial addition of ciphers c1 + c2
+        c3 = (a0+a1,b0+b1)
+        #assign value to the new cipher
+        (a3,b3) = c3
+        #add zero element cipher encrypted with public key (pub)
+        c3 = (a3+a2,b3+b2)
+        return c3
 
     def mul(self, c1, val):
         """Multiplies an encrypted counter by a public value"""

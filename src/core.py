@@ -92,6 +92,9 @@ class Core:
         crypto = Crypto()
         params = crypto.setup()
 
+        message = 100
+        msgs = [34,26,75,14,10,10,10] #159
+
         pub_keys = []
         priv_keys = []
         keypairs = []
@@ -108,12 +111,23 @@ class Core:
         group_key = crypto.groupKey(params, pub_keys)
 
         print("Group key calculated: {}").format(group_key)
-        message = 100
-        print("Message to be encrypted: {}").format(message)
+        #print("Message to be encrypted: {}").format(message)
         ci = crypto.encrypt(params, group_key, message)
+
+        cis =  []
+        for msg in msgs:
+            if not cis:
+                cis.append(crypto.encrypt(params, group_key, msg))
+            else:
+                c1 = crypto.encrypt(params, group_key, msg)
+                c3 = crypto.add(params, group_key, cis[0], c1)
+                cis[0] = c3
+
+        print("cis: {}").format(cis)
+
         print("Ciphertext: {}").format(ci)
 
-        t1 = crypto.partialDecrypt(params, priv_keys[0], ci, False)
+        t1 = crypto.partialDecrypt(params, priv_keys[0], cis[0], False)
         t2 = crypto.partialDecrypt(params, priv_keys[1], t1, False)
         t3 = crypto.partialDecrypt(params, priv_keys[2], t2, False)
         t4 = crypto.partialDecrypt(params, priv_keys[3], t3, True)
