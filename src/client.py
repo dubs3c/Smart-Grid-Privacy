@@ -1,9 +1,10 @@
 from core import Core
 from petlib.ec import EcGroup, EcPt
+from petlib import pack
 from random import randint
 from crypto import Crypto
-import time, threading, msgpack, json
-from threading import Timer
+import time, msgpack, json
+import base64
 
 clients = ["192.168.1.7","0.0.0.0"]
 
@@ -29,12 +30,10 @@ crypto = Crypto()
 params = crypto.setup()
 priv, pub = crypto.key_gen(params)
 
-packed = msgpack.packb(pub, default=crypto.default, use_bin_type=True)
-x = msgpack.unpackb(packed, ext_hook=crypto.ext_hook, encoding='utf-8')
+b64_enc = base64.b64encode(pack.encode(pub))
+print b64_enc
 
-assert x == pub
-
-c.core.send("localhost", json.dumps({"id":str(c.id), "IP":c.core.get_ip(), "operation": "key", "pub":pub.__dict__}))
+c.core.send("localhost", json.dumps({"id":str(c.id), "IP":c.core.get_ip(), "operation": "key", "pub":b64_enc}))
 
 while True:
   c.generate_readings()

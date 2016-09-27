@@ -4,6 +4,9 @@ import json
 import colorlog
 from crypto import Crypto
 from petlib.ec import EcGroup, EcPt
+import base64
+import time, threading, msgpack, json
+from petlib import pack
 
 pub_keys = []
 
@@ -30,12 +33,14 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
         if(parsed_json['operation'] == "key"):
             if parsed_json['id'] not in clients:
                 print(len(clients))
-                pub_keys.append(parsed_json['pub'])
+                pub_keys.append(pack.decode(base64.b64decode(parsed_json['pub'])))
+                print("pub keys: {}").format(pub_keys)
                 clients.append(parsed_json['id'])
                 print(len(clients),len(pub_keys))
             if len(pub_keys) == 2:
                 print("generate group key")
-                #group_key = crypto.groupKey(params, pub_keys)
+                group_key = crypto.groupKey(params, pub_keys)
+                print("group_key: {}").format(group_key)
 
         if(parsed_json['operation'] == "readings"):
             print(str(parsed_json['id'])+' '+str(parsed_json['IP'])+' '+str(parsed_json['reading']))
