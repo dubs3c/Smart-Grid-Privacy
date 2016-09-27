@@ -12,7 +12,7 @@ echo 'alias ll="ls -lah"' >> ~/.bashrc
 source ~/.bashrc
 wget https://bootstrap.pypa.io/get-pip.py
 python get-pip.py
-pip install petlib
+pip install -r requirements.txt
 python -c "import petlib; petlib.run_tests()"
 echo ""
 echo "============================ INSTALLATION COMPLETE ============================"

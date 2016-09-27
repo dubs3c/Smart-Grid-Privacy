@@ -1,6 +1,8 @@
 import socket
 import SocketServer
 import json
+import colorlog
+from crypto import Crypto
 
 class MyTCPHandler(SocketServer.BaseRequestHandler):
     """
@@ -30,18 +32,32 @@ class Core:
     def __init__(self):
         self.port = 1337
         self.host = '0.0.0.0'
+        
+        self.logger = colorlog.getLogger()
+        self.logger.setLevel(colorlog.colorlog.logging.DEBUG)
+        self.handler = colorlog.StreamHandler()
+        self.handler.setFormatter(colorlog.ColoredFormatter())
+        self.logger.addHandler(self.handler)
+
+        '''
+        logger.debug("Debug message")
+        logger.info("Information message")
+        logger.warning("Warning message")
+        logger.error("Error message")
+        logger.critical("Critical message")
+        '''
  
     def listen(self):
         """ Creates a listening socket """
         while True:
             try:
                 server = SocketServer.TCPServer((self.host, self.port), MyTCPHandler)
-                print("[*] Server Listening on %s:%d" % (self.host, self.port))
+                self.logger.info("[*] Server Listening on %s:%d" % (self.host, self.port))
                 server.serve_forever()
             except SocketServer.socket.error as exc:
                 if exc.args[0] != 48:
                     raise
-                print 'Port', self.port, 'already in use'
+                self.logger.warning("Port %d is already in use, incrementing port" % (self.port))
                 self.port += 1
             else:
                 break
@@ -71,6 +87,23 @@ class Core:
     def get_ip(self):
         return self.host
 
-    def generate_keys(self):
-        """ Generate private and public keys """
-        pass
+
+    def test_crypto_system(self):
+        crypto = Crypto()
+        params = crypto.setup()
+
+        pub_keys = []
+        for x in xrange(1,5):
+            p = crypto.setup()
+            # print("key {}: {}\n").format(x,crypto.key_gen(p))
+            pub_keys.append(crypto.key_gen(p))
+        
+        group_key = crypto.groupKey(params, pub_keys)
+
+        #print("Public keys: {}\n").format(pub_keys)
+        print("Group key calculated: {}\n").format(group_key)
+
+        ci = crypto.encrypt(params, group_key, 99)
+        print("{}\n").format(ci)
+
+

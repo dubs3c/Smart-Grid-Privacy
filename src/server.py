@@ -6,9 +6,6 @@ class Server(Core):
     def __init__(self):
         self.core = Core()
 
-    def hello(self):
-        print("test")
-
     def create_global_key(self, params, pubKeys=[]):
 		""" Generate a group public key from a list of public keys """
 		(G, g, h, o) = params
@@ -21,5 +18,5 @@ class Server(Core):
 
 s = Server()
 
-s.hello()
-s.core.listen()
+#s.core.listen()
+s.core.test_crypto_system()
