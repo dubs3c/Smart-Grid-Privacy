@@ -11,6 +11,8 @@ from petlib import pack
 pub_keys = []
 
 class MyTCPHandler(SocketServer.BaseRequestHandler):
+    pub_keys = []
+    clients = []
     """
     The request handler class for our server.
 
@@ -23,20 +25,17 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
     def handle(self):
         # self.request is the TCP socket connected to the client
         self.data = self.request.recv(1024).strip()
-
-        clients = []
         
         crypto = Crypto()
         params = crypto.setup()
-
+        
         parsed_json = json.loads(self.data)
         if(parsed_json['operation'] == "key"):
             if parsed_json['id'] not in clients:
-                print(len(clients))
                 pub_keys.append(pack.decode(base64.b64decode(parsed_json['pub'])))
                 print("pub keys: {}").format(pub_keys)
                 clients.append(parsed_json['id'])
-                print(len(clients),len(pub_keys))
+                print("Clients: {}, Pub keys len: {}").format(len(clients),len(pub_keys))
             if len(pub_keys) == 2:
                 print("generate group key")
                 group_key = crypto.groupKey(params, pub_keys)
@@ -51,10 +50,10 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
         #print self.data
         #self.request.sendall(self.data.upper()+"\n")
 
-class Core:
+class Core(object):
     """ This class contains core methods used by the application """
     def __init__(self):
-        self.port = 1336
+        self.port = 1337
         self.host = '0.0.0.0'
         
         self.logger = colorlog.getLogger()
