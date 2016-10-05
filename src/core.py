@@ -79,7 +79,7 @@ class Core(object):
         """ Creates a listening socket """
         while True:
             try:
-                server = ThreadedTCPServer(('',1337), MyTCPHandler)
+                server = ThreadedTCPServer(('',self.port), MyTCPHandler)
                 self.logger.info("[*] Server Listening on %s:%d" % (self.host, self.port))
                 server.serve_forever()
             except SocketServer.socket.error as exc:
