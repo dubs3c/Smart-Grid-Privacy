@@ -1,18 +1,13 @@
-import socket
-import SocketServer
-import json
-import colorlog
+import socket, SocketServer, json, colorlog, time, threading, msgpack, base64
 from crypto import Crypto
 from petlib.ec import EcGroup, EcPt
-import base64
-import time, threading, msgpack, json
 from petlib import pack
 
 pub_keys = []
+clients = []
 
 class MyTCPHandler(SocketServer.BaseRequestHandler):
     pub_keys = []
-    clients = []
     """
     The request handler class for our server.
 
@@ -24,6 +19,7 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
 
     def handle(self):
         # self.request is the TCP socket connected to the client
+        print "Client connected with ", self.client_address
         self.data = self.request.recv(1024).strip()
         
         crypto = Crypto()
@@ -49,6 +45,9 @@ class MyTCPHandler(SocketServer.BaseRequestHandler):
         #print "{} wrote:".format(self.client_address[0])
         #print self.data
         #self.request.sendall(self.data.upper()+"\n")
+
+class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
+    pass
 
 class Core(object):
     """ This class contains core methods used by the application """
@@ -80,7 +79,7 @@ class Core(object):
         """ Creates a listening socket """
         while True:
             try:
-                server = SocketServer.TCPServer((self.host, self.port), MyTCPHandler)
+                server = ThreadedTCPServer(('',1337), MyTCPHandler)
                 self.logger.info("[*] Server Listening on %s:%d" % (self.host, self.port))
                 server.serve_forever()
             except SocketServer.socket.error as exc:
