@@ -5,6 +5,7 @@ import SocketServer
 import sys
 from random import randint
 import time
+import json
 
 def send(ip, port, message):
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -26,5 +27,5 @@ def send(ip, port, message):
             sock.close()
             break
 
-
-send("192.168.1.150", 1234, "This is a test message")
+json_str = {"ID": "5", "IP": "192.168.1.207", "OPERATION": "READINGS", "reading": "1"}
+send("192.168.1.102", 1337, json.dumps(json_str))

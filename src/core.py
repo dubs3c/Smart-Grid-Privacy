@@ -70,7 +70,11 @@ class Core(object):
                         if data:
                             # A readable client socket has data
                             self.logger.debug('[+] Received {} from {}'.format(data, conn.getpeername()))
-                            self.parse_operation(data)
+                            try:
+                                self.parse_operation(data)
+                            except:
+                                self.logger.error("Some error")
+                                conn.close()
                             message_queues[conn].put(data)
                             # Add output channel for response
                             if conn not in wlist:
@@ -164,7 +168,7 @@ class Core(object):
             self.logger.debug("Got Operation: " + op)
             self._callbacks[op](json_decoded)
         else:
-            logger.error("Unknown operation")
+            self.logger.error("Unknown operation")
 
     def test_crypto_system(self):
         crypto = Crypto()

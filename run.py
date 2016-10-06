@@ -22,6 +22,7 @@ from src.client import Client
 from src.core import Core
 import sys
 import threading
+import time
 
 
 def main(arguments):
@@ -30,22 +31,17 @@ def main(arguments):
         client = Client()
         client.setup()
         client.start()
-        readings_thread = threading.Thread(target=client.generate_readings)
-        listening_thread = threading.Thread(target=client.listen)
-        try:
-            listening_thread.start()
-            readings_thread.start()
-        except(KeyboardInterrupt, SystemExit):
-            cleanup_stop_thread();
-            sys.exit()
-        else:
-            pass
     elif arguments['--mode'] == 'server':
         server = Server()
         server.setup()
         server.start()
     else:
         core.logger.error("You need to specify either server or client mode!")
+
+    while True:
+      # The main thread will loop forever until CTRL+C, which will cause all the threads and main program to close.
+      # However better cleanup is needed
+      time.sleep(1)
 
 
 if __name__ == '__main__':

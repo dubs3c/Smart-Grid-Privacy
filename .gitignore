@@ -6,3 +6,5 @@ get-pip.py
 petlib/_petlib.c
 petlib/_petlib.o
 petlib/_petlib.so
+node_list.txt
+Vagrantfile

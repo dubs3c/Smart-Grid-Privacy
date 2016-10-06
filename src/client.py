@@ -53,16 +53,18 @@ class Client(Core):
         b64_enc = base64.b64encode(pack.encode(self.client_keypair[1]))
         self.send(self.nodes[0], json.dumps({"ID":str(self.id), "IP":self.get_ip(), "OPERATION": "GROUP_KEY_CREATE", "PUB":b64_enc}))
         self.logger.debug("Public Key has been sent.")
-        # #readings_thread = threading.Thread(target=self.generate_readings)
-        # listening_thread = threading.Thread(target=self.listen)
-        # try:
-        #     listening_thread.start()
-        #     #readings_thread.start()
-        # except (KeyboardInterrupt, SystemExit):
-        #     cleanup_stop_thread();
-        #     sys.exit()
-
-        # self.generate_readings()
+        readings_thread = threading.Thread(target=self.generate_readings)
+        listening_thread = threading.Thread(target=self.listen)
+        readings_thread.daemon = True
+        listening_thread.daemon = True
+        try:
+            listening_thread.start()
+            readings_thread.start()
+        except(KeyboardInterrupt, SystemExit):
+            cleanup_stop_thread();
+            sys.exit()
+        else:
+            pass
 
     def _decrypt_group_message(self, json_decoded):
         pass
