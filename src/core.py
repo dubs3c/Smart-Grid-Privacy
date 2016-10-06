@@ -1,59 +1,24 @@
-import socket, SocketServer, json, colorlog, time, threading, msgpack, base64
+import socket
+import threading
+import select
+import Queue
+import json
+import colorlog
 from crypto import Crypto
 from petlib.ec import EcGroup, EcPt
+import base64
+import time
+import msgpack
 from petlib import pack
-
-pub_keys = []
-clients = []
-
-class MyTCPHandler(SocketServer.BaseRequestHandler):
-    pub_keys = []
-    """
-    The request handler class for our server.
-
-    It is instantiated once per connection to the server, and must
-    override the handle() method to implement communication to the
-    client.
-    """
-    allow_reuse_address=True
-
-    def handle(self):
-        # self.request is the TCP socket connected to the client
-        print "Client connected with ", self.client_address
-        self.data = self.request.recv(1024).strip()
-        
-        crypto = Crypto()
-        params = crypto.setup()
-        
-        parsed_json = json.loads(self.data)
-        if(parsed_json['operation'] == "key"):
-            if parsed_json['id'] not in clients:
-                pub_keys.append(pack.decode(base64.b64decode(parsed_json['pub'])))
-                print("pub keys: {}").format(pub_keys)
-                clients.append(parsed_json['id'])
-                print("Clients: {}, Pub keys len: {}").format(len(clients),len(pub_keys))
-            if len(pub_keys) == 2:
-                print("generate group key")
-                group_key = crypto.groupKey(params, pub_keys)
-                print("group_key: {}").format(group_key)
-
-        if(parsed_json['operation'] == "readings"):
-            print(str(parsed_json['id'])+' '+str(parsed_json['IP'])+' '+str(parsed_json['reading']))
-
-        # do_some_logic_with_data(self.data)
-
-        #print "{} wrote:".format(self.client_address[0])
-        #print self.data
-        #self.request.sendall(self.data.upper()+"\n")
-
-class ThreadedTCPServer(SocketServer.ThreadingMixIn, SocketServer.TCPServer):
-    pass
 
 class Core(object):
     """ This class contains core methods used by the application """
     def __init__(self):
         self.port = 1337
         self.host = '0.0.0.0'
+        self._callbacks = {}
+        self.MAX_RETRIES = 5
+        self.nodes = []
         
         self.logger = colorlog.getLogger()
         self.logger.setLevel(colorlog.colorlog.logging.DEBUG)
@@ -69,26 +34,90 @@ class Core(object):
         logger.critical("Critical message")
         '''
 
+
+    def listen(self):
+        cur_thread = threading.current_thread()
+        self.logger.debug("Processing listen() in thread: {}".format(cur_thread.name))
+        # Create a TCP/IP socket
+        sock = None
+        sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        sock.setblocking(0)
+        server_address = (self.host, self.port)
+        sock.bind(server_address)
+        print("[*] Listening on {}:{}".format(server_address[0],server_address[1]))
+        # Allow a backlog of 10 connections
+        sock.listen(10)
+
+        # Outgoing message queues (socket:Queue)
+        message_queues = {}
+
+        rlist = [sock]
+        wlist = []
+        xlist = []
+        try:
+            while True:
+                readable, writable, exceptional = select.select(rlist, wlist, xlist, 1)
+                for conn in readable:
+                    if conn is sock:
+                        # A "readable" server socket is ready to accept a connection
+                        connection, client_address = conn.accept()
+                        print("[+] New connection from {}".format(client_address))
+                        connection.setblocking(0)
+                        rlist.append(connection)
+                        message_queues[connection] = Queue.Queue()
+                    else:
+                        data = conn.recv(1024)
+                        if data:
+                            # A readable client socket has data
+                            self.logger.debug('[+] Received {} from {}'.format(data, conn.getpeername()))
+                            self.parse_operation(data)
+                            message_queues[conn].put(data)
+                            # Add output channel for response
+                            if conn not in wlist:
+                                wlist.append(conn)
+                        else:
+                            # Interpret empty result as closed connection
+                            self.logger.debug("[*] Closing {} after receiving no data\n".format(client_address))
+                            if conn in wlist:
+                                wlist.remove(conn)
+                            rlist.remove(conn)
+                            conn.close()
+                            # Remove message queue
+                            del message_queues[conn]
+
+                # # Handle outputs i.e send back data to source
+                # for conn in wlist:
+                #     try:
+                #         next_msg = message_queues[conn].get_nowait()
+                #     except Queue.Empty:
+                #         # No messages waiting so stop checking for writability.
+                #         print >>sys.stderr, 'output queue for', conn.getpeername(), 'is empty'
+                #         wlist.remove(s)
+                #     else:
+                #         print >>sys.stderr, 'sending "%s" to %s' % (next_msg, conn.getpeername())
+                #         conn.send(next_msg)
+
+                # # Handle "exceptional conditions"
+                # for conn in xlist:
+                #     print >>sys.stderr, 'handling exceptional condition for', conn.getpeername()
+                #     # Stop listening for input on the connection
+                #     inputs.remove(conn)
+                #     if conn in wlist:
+                #         wlist.remove(s)
+                #     conn.close()
+                #     # Remove message queue
+                #     del message_queues[s]
+
+        except KeyboardInterrupt:
+            # Close all sockets when the program is killed
+            for sock in rlist:
+                sock.close()
+
     def get_pub_keys(self):
         return pub_keys
 
     def add_pub_key(self,key):
         pub_keys.append(key)
-
-    def listen(self):
-        """ Creates a listening socket """
-        while True:
-            try:
-                server = ThreadedTCPServer(('',self.port), MyTCPHandler)
-                self.logger.info("[*] Server Listening on %s:%d" % (self.host, self.port))
-                server.serve_forever()
-            except SocketServer.socket.error as exc:
-                if exc.args[0] != 48:
-                    raise
-                self.logger.warning("Port %d is already in use, incrementing port" % (self.port))
-                self.port += 1
-            else:
-                break
 
     def send(self, dst, data):
         """ Sends data to specified host
@@ -99,21 +128,43 @@ class Core(object):
         sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
-        try:
-            sock.connect((dst, self.port))
-            sock.sendall(data + "\n")
-        finally:
-            sock.close()
+        for tries in range(self.MAX_RETRIES):
+            try:
+                sock.connect((dst, self.port))
+                sock.setblocking(0)
+                sock.sendall(data + "\n")
+            except EnvironmentError as exc :
+                if exc.errno == errno.ECONNREFUSED:
+                    time.sleep(5)
+                else:
+                    raise
+            else:
+                break
+            finally:
+                sock.close()
+                break
 
-    def get_operation(self, data):
+    def get_ip(self):
+        # This returns 0.0.0.0 which is incorrect.
+        return self.host
+
+    def get_nodes(self):
+        """ Retrieves the specified IP addresses that should be part of the system network """
+        with open('node_list.txt', 'r') as file:
+            self.nodes = [line.rstrip('\n') for line in file]
+
+    def parse_operation(self, data):
         """ Parses the OPERATION received from node and executes code based on the OPERATION
         Args:
             data (str): The received data
         """
-        pass
-
-    def get_ip(self):
-        return self.host
+        json_decoded = json.loads(data)
+        op = json_decoded['OPERATION']
+        if op in self._callbacks:
+            self.logger.debug("Got Operation: " + op)
+            self._callbacks[op](json_decoded)
+        else:
+            logger.error("Unknown operation")
 
     def test_crypto_system(self):
         crypto = Crypto()

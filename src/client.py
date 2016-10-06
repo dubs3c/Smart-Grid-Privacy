@@ -3,8 +3,12 @@ from petlib.ec import EcGroup, EcPt
 from petlib import pack
 from random import randint
 from crypto import Crypto
-import time, msgpack, json
+import time
+import msgpack
+import json
 import base64
+import sys
+import threading
 
 class Client(Core):
 
@@ -14,16 +18,20 @@ class Client(Core):
         self.logger.info("Running in Client mode")
         self.public_keys = []
         self.client_keypair = []
-        self.clients = ["192.168.1.7","0.0.0.0"]
 
     def generate_readings(self):
-        reading = randint(0,9)
-        print(time.ctime(),reading)
+        cur_thread = threading.current_thread()
+        self.logger.debug("Processing generate_readings() in thread: {}".format(cur_thread.name))
         crypto = Crypto()
         params = crypto.setup()
-        enc = crypto.encrypt(params, self.client_keypair[1], reading)
-        json_str = {"id": self.id, "IP": self.get_ip(), "operation": "readings","pub": self.client_keypair[1].__dict__, "reading": reading}
-        self.send("localhost", json.dumps(json_str))
+        while True:
+            reading = randint(0,100)
+            print(time.ctime(),reading)
+            encrypted_reading = crypto.encrypt(params, self.client_keypair[1], reading)
+            b64_reading = base64.b64encode(pack.encode(encrypted_reading))
+            json_str = {"ID": self.id, "IP": self.get_ip(), "OPERATION": "READINGS", "reading": b64_reading}
+            self.send(self.nodes[0], json.dumps(json_str))
+            time.sleep(5)
 
     def add_public_key(self,key):
         self.public_keys.append(key)
@@ -32,6 +40,8 @@ class Client(Core):
         return self.public_keys
 
     def setup(self):
+        self._callbacks["DECRYPT_GROUP_MSG"] = self._decrypt_group_message
+        self.get_nodes()
         self.logger.debug("Generating keypairs...")
         crypto = Crypto()
         params = crypto.setup()
@@ -40,20 +50,22 @@ class Client(Core):
         self.add_public_key(pub)
 
     def start(self):
-        
-        #self.logger.debug("Listening")
-        #self.listen()
-        for x in self.clients:
-            if(x == self.get_ip):
-                self.id = id
-                id += 1
-
         b64_enc = base64.b64encode(pack.encode(self.client_keypair[1]))
-        self.send("localhost", json.dumps({"id":str(self.id), "IP":self.get_ip(), "operation": "key", "pub":b64_enc}))
-        self.logger.debug("Key has been sent")
-        while True:
-            self.generate_readings()
-            time.sleep(2)
+        self.send(self.nodes[0], json.dumps({"ID":str(self.id), "IP":self.get_ip(), "OPERATION": "GROUP_KEY_CREATE", "PUB":b64_enc}))
+        self.logger.debug("Public Key has been sent.")
+        # #readings_thread = threading.Thread(target=self.generate_readings)
+        # listening_thread = threading.Thread(target=self.listen)
+        # try:
+        #     listening_thread.start()
+        #     #readings_thread.start()
+        # except (KeyboardInterrupt, SystemExit):
+        #     cleanup_stop_thread();
+        #     sys.exit()
+
+        # self.generate_readings()
+
+    def _decrypt_group_message(self, json_decoded):
+        pass
 
 '''
 c = Client()
