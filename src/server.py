@@ -92,10 +92,9 @@ class Server(Core):
 
     def _track_readings(self,json_decoded, ip):
         if json_decoded['ID'] not in self.readings.keys():
-            self.readings[json_decoded['ID']] = json_decoded['reading']
-        #else:
-            #addera readings
-        print(self.readings.get(json_decoded['ID']))
+            self.readings[json_decoded['ID']] = pack.decode(base64.b64decode(json_decoded['reading']))
+        else:
+            self.readings[json_decoded['ID']] = self.crypto.add(self.params, self.group_key, self.readings.get(json_decoded['ID']), pack.decode(base64.b64decode(json_decoded['reading'])))
 
 '''
 s = Server()
