@@ -18,20 +18,22 @@ class Client(Core):
         self.logger.info("Running in Client mode")
         self.public_keys = []
         self.client_keypair = []
+        self.group_key = []
 
     def generate_readings(self):
-        cur_thread = threading.current_thread()
-        self.logger.debug("Processing generate_readings() in thread: {}".format(cur_thread.name))
-        crypto = Crypto()
-        params = crypto.setup()
-        while True:
-            reading = randint(0,100)
-            print(time.ctime(),reading)
-            encrypted_reading = crypto.encrypt(params, self.client_keypair[1], reading)
-            b64_reading = base64.b64encode(pack.encode(encrypted_reading))
-            json_str = {"ID": self.id, "IP": self.get_ip(), "OPERATION": "READINGS", "reading": b64_reading}
-            self.send(self.nodes[0], json.dumps(json_str))
-            time.sleep(5)
+        if(len(self.group_key) != 0):
+            cur_thread = threading.current_thread()
+            self.logger.debug("Processing generate_readings() in thread: {}".format(cur_thread.name))
+            crypto = Crypto()
+            params = crypto.setup()
+            while True:
+                reading = randint(0,100)
+                print(time.ctime(),reading)
+                encrypted_reading = crypto.encrypt(params, self.group_key[0], reading)
+                b64_reading = base64.b64encode(pack.encode(encrypted_reading))
+                json_str = {"ID": self.id, "OPERATION": "READINGS", "reading": b64_reading}
+                self.send(self.nodes[0], json.dumps(json_str))
+                time.sleep(5)
 
     def add_public_key(self,key):
         self.public_keys.append(key)
@@ -41,6 +43,7 @@ class Client(Core):
 
     def setup(self):
         self._callbacks["DECRYPT_GROUP_MSG"] = self._decrypt_group_message
+        self._callbacks["RECEIVE_GROUP_KEY"] = self._receive_group_key
         self.get_nodes()
         self.logger.debug("Generating keypairs...")
         crypto = Crypto()
@@ -51,7 +54,7 @@ class Client(Core):
 
     def start(self):
         b64_enc = base64.b64encode(pack.encode(self.client_keypair[1]))
-        self.send(self.nodes[0], json.dumps({"ID":str(self.id), "IP":self.get_ip(), "OPERATION": "GROUP_KEY_CREATE", "PUB":b64_enc}))
+        self.send(self.nodes[0], json.dumps({"ID":str(self.id), "OPERATION": "GROUP_KEY_CREATE", "PUB":b64_enc}))
         self.logger.debug("Public Key has been sent.")
         readings_thread = threading.Thread(target=self.generate_readings)
         listening_thread = threading.Thread(target=self.listen)
@@ -66,8 +69,12 @@ class Client(Core):
         else:
             pass
 
-    def _decrypt_group_message(self, json_decoded):
+    def _decrypt_group_message(self, json_decoded, ip):
         pass
+
+    def _receive_group_key(self, json_decoded, ip):
+        self.group_key.append(pack.decode(base64.b64decode(json_decoded['PUB'])))
+        self.generate_readings()
 
 '''
 c = Client()
