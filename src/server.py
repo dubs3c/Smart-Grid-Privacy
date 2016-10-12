@@ -93,7 +93,7 @@ class Server(Core):
     def _track_readings(self,json_decoded, ip):
         if json_decoded['ID'] not in self.readings.keys():
             self.readings[json_decoded['ID']] = json_decoded['reading']
-        else:
+        #else:
             #addera readings
         print(self.readings.get(json_decoded['ID']))
 
