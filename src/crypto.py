@@ -67,6 +67,12 @@ class Crypto():
         b = k * pub + counter * g
         return (a, b, k)
 
+    def test_add(c1, c2):
+        """Add two encrypted counters"""
+        a1, b1 = c1
+        a2, b2 = c2
+        return (a1 + a2, b1 + b2)
+
     def add(self, params, pub, c1, c2):
         """ Given two ciphertexts compute the ciphertext of the 
             sum of their plaintexts.
@@ -117,14 +123,14 @@ class Crypto():
         plain = b + (-priv * a)
         return table[plain]
 
-    def decrypt(params, priv, ciphertext):
+    def decrypt(self,params, priv, ciphertext):
         """ Decrypt a message using the private key """
-        assert isCiphertext(params, ciphertext)
+        assert self.isCiphertext(params, ciphertext)
         (a , b) = ciphertext
         a = priv * a
         hm = b-a    
 
-        return logh(params, hm)
+        return self.logh(params, hm)
 
     def generate_keys(self, params):
         """ Generate private and public keys """
