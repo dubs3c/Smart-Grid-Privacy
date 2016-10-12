@@ -20,6 +20,9 @@ class Server(Core):
         self.public_keys = []
         self.test = []
         self.server_keypair = []
+        self.clients = {}
+        self.group_key = ''
+        self.readings = {}
 
     def add_public_key(self,key):
         self.public_keys.append([key])
@@ -42,44 +45,57 @@ class Server(Core):
         self._callbacks["READINGS"] = self._track_readings
 
         self.get_nodes()
-        crypto = Crypto()
-        params = crypto.setup()
-        priv, pub = crypto.key_gen(params)
+        self.crypto = Crypto()
+        self.params = self.crypto.setup()
+        priv, pub = self.crypto.key_gen(self.params)
         self.server_keypair.extend([priv, pub])
         self.add_public_key(pub)
+        self.test.append(pub)
 
     def start(self):
+        group_key_thread = threading.Thread(target=self._send_group_key)
         listening_thread = threading.Thread(target=self.listen)
         try:
             listening_thread.start()
+            group_key_thread.start()
         except (KeyboardInterrupt, SystemExit):
             cleanup_stop_thread();
             sys.exit()
+        else:
+            pass
 
-    def _compute_group_key(self,json_decoded):
-        pub_keys = []
-        clients = []
-
-        crypto = Crypto()
-        params = crypto.setup()
+    def _compute_group_key(self,json_decoded, ip):
         print("Print len of pubkeys is: {}".format(len(self.test)))
-        if json_decoded['ID'] not in clients:
+
+        if json_decoded['ID'] not in self.clients.keys():
             print(pack.decode(base64.b64decode(json_decoded['PUB'])))
             self.test.append(pack.decode(base64.b64decode(json_decoded['PUB'])))
             print("pub keys: {}").format(self.test)
-            clients.append(json_decoded['ID'])
-            print("Clients: {}, Pub keys len: {}").format(len(clients),len(self.test))
+            self.clients[json_decoded['ID']] = ip
+            #self.clients.append(json_decoded['ID'])
+            print("Clients: {}, Pub keys len: {}").format(len(self.clients),len(self.test))
         if len(self.test) == 2:
             print("generate group key")
-            group_key = crypto.groupKey(params, self.test)
-            print("group_key: {}").format(group_key)
+            self.group_key = self.crypto.groupKey(self.params, self.test)
+            print("group_key: {}").format(self.group_key)
+            self._send_group_key()
 
-    def _decrypt_group_final(self,json_decoded):
+    def _send_group_key(self):
+        cur_thread = threading.current_thread()
+        self.logger.debug("Processing _send_group_key() in thread: {}".format(cur_thread.name))
+        for ip in self.nodes:
+            if ip != self.nodes[0]:
+                self.send(ip, json.dumps({"OPERATION": "RECEIVE_GROUP_KEY", "PUB": base64.b64encode(pack.encode(self.group_key))}))
+
+    def _decrypt_group_final(self,json_decoded, ip):
         pass
 
-    def _track_readings(self,json_decoded):
-        pass
-
+    def _track_readings(self,json_decoded, ip):
+        if json_decoded['ID'] not in self.readings.keys():
+            self.readings[json_decoded['ID']] = json_decoded['reading']
+        else:
+            #addera readings
+        print(self.readings.get(json_decoded['ID']))
 
 '''
 s = Server()
