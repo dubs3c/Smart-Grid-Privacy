@@ -71,7 +71,7 @@ class Core(object):
                             # A readable client socket has data
                             self.logger.debug('[+] Received {} from {}'.format(data, conn.getpeername()))
                             try:
-                                self.parse_operation(data)
+                                self.parse_operation(data, client_address)
                             except:
                                 self.logger.error("Some error")
                                 conn.close()
@@ -148,16 +148,12 @@ class Core(object):
                 sock.close()
                 break
 
-    def get_ip(self):
-        # This returns 0.0.0.0 which is incorrect.
-        return self.host
-
     def get_nodes(self):
         """ Retrieves the specified IP addresses that should be part of the system network """
         with open('node_list.txt', 'r') as file:
             self.nodes = [line.rstrip('\n') for line in file]
 
-    def parse_operation(self, data):
+    def parse_operation(self, data, ip):
         """ Parses the OPERATION received from node and executes code based on the OPERATION
         Args:
             data (str): The received data
@@ -166,7 +162,7 @@ class Core(object):
         op = json_decoded['OPERATION']
         if op in self._callbacks:
             self.logger.debug("Got Operation: " + op)
-            self._callbacks[op](json_decoded)
+            self._callbacks[op](json_decoded, ip)
         else:
             self.logger.error("Unknown operation")
 
