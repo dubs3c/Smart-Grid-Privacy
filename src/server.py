@@ -23,7 +23,7 @@ class Server(Core):
         self.clients = {}
         self.group_key = ''
         self.readings = {}
-        self.count = 0
+        self.count = {}
         self.tmp = ''
 
     def add_public_key(self,key):
@@ -49,10 +49,10 @@ class Server(Core):
         self.get_nodes()
         self.crypto = Crypto()
         self.params = self.crypto.setup()
-        priv, pub = self.crypto.key_gen(self.params)
-        self.server_keypair.extend([priv, pub])
-        self.add_public_key(pub)
-        self.test.append(pub)
+        self.priv, self.pub = self.crypto.key_gen(self.params)
+        self.server_keypair.extend([self.priv, self.pub])
+        self.add_public_key(self.pub)
+        self.test.append(self.pub)
 
     def start(self):
         group_key_thread = threading.Thread(target=self._send_group_key)
@@ -76,7 +76,7 @@ class Server(Core):
             self.clients[json_decoded['ID']] = ip
             #self.clients.append(json_decoded['ID'])
             print("Clients: {}, Pub keys len: {}").format(len(self.clients),len(self.test))
-        if len(self.test) == 2:
+        if len(self.test) == len(self.nodes):
             print("generate group key")
             self.group_key = self.crypto.groupKey(self.params, self.test)
             print("group_key: {}").format(self.group_key)
@@ -90,21 +90,23 @@ class Server(Core):
                 self.send(ip, json.dumps({"OPERATION": "RECEIVE_GROUP_KEY", "PUB": base64.b64encode(pack.encode(self.group_key))}))
 
     def _decrypt_group_final(self,json_decoded, ip):
-        pass
+        self.logger.debug("Decrypting group final...")
+        t4 = self.crypto.partialDecrypt(self.params, self.priv, pack.decode(base64.b64decode(json_decoded['reading'])), True)
+        print("Plaintext: {}").format(t4)
 
     def _track_readings(self,json_decoded, ip):
         if json_decoded['ID'] not in self.readings.keys():
             self.readings[json_decoded['ID']] = pack.decode(base64.b64decode(json_decoded['reading']))
-            self.count += 1
+            self.count[json_decoded['ID']] = 1
         else:
-            if self.count == 3:
+            if self.count.get(json_decoded['ID']) == 10:
                 self.tmp = self.readings.get(json_decoded['ID'])
                 self.readings[json_decoded['ID']] = pack.decode(base64.b64decode(json_decoded['reading']))
-                self.count = 1
-                self.send('192.168.1.7', json.dumps({"OPERATION": "DECRYPT_GROUP_MSG", "PUB": base64.b64encode(pack.encode(self.group_key))}))
+                self.count[json_decoded['ID']] = 1
+                self.send(self.nodes[1], json.dumps({"OPERATION": "DECRYPT_GROUP_MSG", "PUB": base64.b64encode(pack.encode(self.group_key)), "reading": base64.b64encode(pack.encode(self.tmp))}))
             else:
                 self.readings[json_decoded['ID']] = self.crypto.add(self.params, self.group_key, self.readings.get(json_decoded['ID']), pack.decode(base64.b64decode(json_decoded['reading'])))
-                self.count += 1
+                self.count[json_decoded['ID']] = self.count.get(json_decoded['ID']) + 1
 
 '''
 s = Server()

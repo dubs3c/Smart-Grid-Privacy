@@ -9,6 +9,7 @@ import json
 import base64
 import sys
 import threading
+import netifaces
 
 class Client(Core):
 
@@ -16,6 +17,7 @@ class Client(Core):
         super(Client, self).__init__()
         self.id = randint(1000,100000)
         self.logger.info("Running in Client mode")
+        self.ip = netifaces.ifaddresses('wlan0')[netifaces.AF_INET][0]['addr']
         self.public_keys = []
         self.client_keypair = []
         self.group_key = []
@@ -50,11 +52,11 @@ class Client(Core):
         self._callbacks["RECEIVE_GROUP_KEY"] = self._receive_group_key
         self.get_nodes()
         self.logger.debug("Generating keypairs...")
-        crypto = Crypto()
-        params = crypto.setup()
-        priv, pub = crypto.key_gen(params)
-        self.client_keypair.extend([priv, pub])
-        self.add_public_key(pub)
+        self.crypto = Crypto()
+        self.params = self.crypto.setup()
+        self.priv, self.pub = self.crypto.key_gen(self.params)
+        self.client_keypair.extend([self.priv, self.pub])
+        self.add_public_key(self.pub)
 
     def start(self):
         b64_enc = base64.b64encode(pack.encode(self.client_keypair[1]))
@@ -76,6 +78,15 @@ class Client(Core):
 
     def _decrypt_group_message(self, json_decoded, ip):
         self.logger.debug("Decrypting group message...")
+        t1 = self.crypto.partialDecrypt(self.params, self.priv, pack.decode(base64.b64decode(json_decoded['reading'])), False)
+        if self.ip == self.nodes[len(self.nodes)-1]:
+            self.send(self.nodes[0], json.dumps({"OPERATION": "DECRYPT_GROUP_FINAL", "PUB": base64.b64encode(pack.encode(self.group_key)), "reading": base64.b64encode(pack.encode(t1))}))
+        else:
+            for i in xrange(len(self.nodes)):
+                if(self.ip == self.nodes[i]):
+                    self.send(self.nodes[i+1], json.dumps({"OPERATION": "DECRYPT_GROUP_MSG", "PUB": base64.b64encode(pack.encode(self.group_key)), "reading": base64.b64encode(pack.encode(t1))}))
+
+
 
     def _receive_group_key(self, json_decoded, ip):
         self.group_key.append(pack.decode(base64.b64decode(json_decoded['PUB'])))
