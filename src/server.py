@@ -23,6 +23,8 @@ class Server(Core):
         self.clients = {}
         self.group_key = ''
         self.readings = {}
+        self.count = 0
+        self.tmp = ''
 
     def add_public_key(self,key):
         self.public_keys.append([key])
@@ -93,8 +95,16 @@ class Server(Core):
     def _track_readings(self,json_decoded, ip):
         if json_decoded['ID'] not in self.readings.keys():
             self.readings[json_decoded['ID']] = pack.decode(base64.b64decode(json_decoded['reading']))
+            self.count += 1
         else:
-            self.readings[json_decoded['ID']] = self.crypto.add(self.params, self.group_key, self.readings.get(json_decoded['ID']), pack.decode(base64.b64decode(json_decoded['reading'])))
+            if self.count == 3:
+                self.tmp = self.readings.get(json_decoded['ID'])
+                self.readings[json_decoded['ID']] = pack.decode(base64.b64decode(json_decoded['reading']))
+                self.count = 1
+                self.send('192.168.1.7', json.dumps({"OPERATION": "DECRYPT_GROUP_MSG", "PUB": base64.b64encode(pack.encode(self.group_key))}))
+            else:
+                self.readings[json_decoded['ID']] = self.crypto.add(self.params, self.group_key, self.readings.get(json_decoded['ID']), pack.decode(base64.b64decode(json_decoded['reading'])))
+                self.count += 1
 
 '''
 s = Server()
