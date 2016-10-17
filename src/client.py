@@ -21,6 +21,10 @@ class Client(Core):
         self.group_key = []
 
     def generate_readings(self):
+        self.logger.debug('generate_readings starting')
+        event_is_set = self.e.wait()
+        self.logger.debug('event set: %s', event_is_set)
+
         if(len(self.group_key) != 0):
             cur_thread = threading.current_thread()
             self.logger.debug("Processing generate_readings() in thread: {}".format(cur_thread.name))
@@ -56,6 +60,7 @@ class Client(Core):
         b64_enc = base64.b64encode(pack.encode(self.client_keypair[1]))
         self.send(self.nodes[0], json.dumps({"ID":str(self.id), "OPERATION": "GROUP_KEY_CREATE", "PUB":b64_enc}))
         self.logger.debug("Public Key has been sent.")
+        self.e = threading.Event()
         readings_thread = threading.Thread(target=self.generate_readings)
         listening_thread = threading.Thread(target=self.listen)
         readings_thread.daemon = True
@@ -70,12 +75,11 @@ class Client(Core):
             pass
 
     def _decrypt_group_message(self, json_decoded, ip):
-        pass
+        self.logger.debug("Decrypting group message...")
 
     def _receive_group_key(self, json_decoded, ip):
         self.group_key.append(pack.decode(base64.b64decode(json_decoded['PUB'])))
-        self.generate_readings()
-
+        self.e.set()
 '''
 c = Client()
 c.listen()
