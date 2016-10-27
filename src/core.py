@@ -69,7 +69,7 @@ class Core(object):
                         data = conn.recv(1024)
                         if data:
                             # A readable client socket has data
-                            self.logger.debug('[+] Received {} from {}'.format(data, conn.getpeername()))
+                            self.logger.info('[+] Received {} from {}'.format(data, conn.getpeername()))
                             try:
                                 self.parse_operation(data, client_address)
                             except:
@@ -81,7 +81,7 @@ class Core(object):
                                 wlist.append(conn)
                         else:
                             # Interpret empty result as closed connection
-                            self.logger.debug("[*] Closing {} after receiving no data\n".format(client_address))
+                            self.logger.info("[*] Closing {} after receiving no data\n".format(client_address))
                             if conn in wlist:
                                 wlist.remove(conn)
                             rlist.remove(conn)
@@ -161,7 +161,7 @@ class Core(object):
         json_decoded = json.loads(data)
         op = json_decoded['OPERATION']
         if op in self._callbacks:
-            self.logger.debug("Got Operation: " + op)
+            self.logger.info("Got Operation: " + op)
             self._callbacks[op](json_decoded, ip)
         else:
             self.logger.error("Unknown operation")

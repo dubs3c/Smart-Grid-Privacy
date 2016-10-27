@@ -17,7 +17,7 @@ class Client(Core):
         super(Client, self).__init__()
         self.id = randint(1000,100000)
         self.logger.info("Running in Client mode")
-        self.ip = netifaces.ifaddresses('wlan0')[netifaces.AF_INET][0]['addr']
+        self.ip = netifaces.ifaddresses('eth1')[netifaces.AF_INET][0]['addr']
         self.public_keys = []
         self.client_keypair = []
         self.group_key = []
@@ -61,7 +61,7 @@ class Client(Core):
     def start(self):
         b64_enc = base64.b64encode(pack.encode(self.client_keypair[1]))
         self.send(self.nodes[0], json.dumps({"ID":str(self.id), "OPERATION": "GROUP_KEY_CREATE", "PUB":b64_enc}))
-        self.logger.debug("Public Key has been sent.")
+        print("Public Key has been sent.")
         self.e = threading.Event()
         readings_thread = threading.Thread(target=self.generate_readings)
         listening_thread = threading.Thread(target=self.listen)
@@ -77,39 +77,16 @@ class Client(Core):
             pass
 
     def _decrypt_group_message(self, json_decoded, ip):
-        self.logger.debug("Decrypting group message...")
+        print("Decrypting group message...")
         t1 = self.crypto.partialDecrypt(self.params, self.priv, pack.decode(base64.b64decode(json_decoded['reading'])), False)
         if self.ip == self.nodes[len(self.nodes)-1]:
-            self.send(self.nodes[0], json.dumps({"OPERATION": "DECRYPT_GROUP_FINAL", "PUB": base64.b64encode(pack.encode(self.group_key)), "reading": base64.b64encode(pack.encode(t1))}))
+            self.send(self.nodes[0], json.dumps({"ID": json_decoded['ID'],"OPERATION": "DECRYPT_GROUP_FINAL", "PUB": base64.b64encode(pack.encode(self.group_key)), "reading": base64.b64encode(pack.encode(t1))}))
         else:
             for i in xrange(len(self.nodes)):
                 if(self.ip == self.nodes[i]):
-                    self.send(self.nodes[i+1], json.dumps({"OPERATION": "DECRYPT_GROUP_MSG", "PUB": base64.b64encode(pack.encode(self.group_key)), "reading": base64.b64encode(pack.encode(t1))}))
-
-
+                    self.send(self.nodes[i+1], json.dumps({"ID": json_decoded['ID'],"OPERATION": "DECRYPT_GROUP_MSG", "PUB": base64.b64encode(pack.encode(self.group_key)), "reading": base64.b64encode(pack.encode(t1))}))
 
     def _receive_group_key(self, json_decoded, ip):
         self.group_key.append(pack.decode(base64.b64decode(json_decoded['PUB'])))
         self.e.set()
-'''
-c = Client()
-c.listen()
-for x in clients:
-    if(x == c.get_ip):
-        c.id = id
-        id += 1
-
-crypto = Crypto()
-params = crypto.setup()
-priv, pub = crypto.key_gen(params)
-
-b64_enc = base64.b64encode(pack.encode(pub))
-print b64_enc
-
-c.send("localhost", json.dumps({"id":str(c.id), "IP":c.get_ip(), "operation": "key", "pub":b64_enc}))
-
-while True:
-  c.generate_readings()
-  time.sleep(2)
-'''
 
